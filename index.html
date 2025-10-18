@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Правовой Анализатор Рекламы (AI Edition)</title>
+    <style>
+        /* Это CSS - наш "дизайнер" */
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            max-width: 800px; 
+            margin: 40px auto; 
+            padding: 20px; 
+            background-color: #f9f9f9;
+            color: #333;
+            line-height: 1.6; 
+        }
+        h1 { 
+            color: #222;
+            text-align: center;
+        }
+        p {
+            text-align: center;
+            color: #555;
+        }
+        textarea { 
+            width: 100%; 
+            height: 250px; 
+            padding: 15px; 
+            font-size: 16px; 
+            border: 1px solid #ccc; 
+            border-radius: 8px; 
+            box-sizing: border-box; /* Важное правило, чтобы padding не ломал ширину */
+            resize: vertical; /* Позволяет пользователю менять высоту поля */
+        }
+        button { 
+            display: block; 
+            width: 100%; 
+            padding: 15px; 
+            font-size: 18px; 
+            font-weight: bold;
+            color: white; 
+            background-color: #007bff; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            margin-top: 20px; 
+            transition: background-color 0.2s;
+        }
+        button:hover { 
+            background-color: #0056b3; 
+        }
+        #results { 
+            margin-top: 30px; 
+            border-top: 1px solid #eee; 
+            padding-top: 20px; 
+        }
+        .result-item { 
+            padding: 15px; 
+            margin-bottom: 10px; 
+            border-radius: 8px; 
+            border-left: 5px solid;
+        }
+        .success { 
+            background-color: #e9f7ef; 
+            color: #1d6a43;
+            border-color: #4CAF50;
+        }
+        .warning { 
+            background-color: #fff8e1; 
+            color: #7a630a;
+            border-color: #ffc107;
+        }
+        .critical { 
+            background-color: #fbeae5; 
+            color: #8a2a17;
+            border-color: #f44336;
+        }
+        /* Стиль для форматированного вывода ответа от AI */
+        pre {
+            white-space: pre-wrap;   /* Позволяет тексту переноситься, сохраняя форматирование */
+            word-wrap: break-word;   /* Переносит длинные слова, которые не помещаются */
+            font-family: inherit;    /* Использует тот же шрифт, что и остальной текст */
+            font-size: 15px;
+            line-height: 1.7;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Это HTML - наш "каркас" -->
+    <h1>Правовой Анализатор Рекламы</h1>
+    <p>Сервис использует Google Gemini для выявления потенциальных юридических рисков в тексте.</p>
+
+    <textarea id="adText" placeholder="Например: Абсолютно лучший крем, гарантия результата за 7 дней!"></textarea>
+    
+    <button onclick="analyzeText()">Проверить с помощью AI</button>
+
+    <div id="results">
+        <!-- Здесь появятся результаты проверки -->
+    </div>
+
+    <script>
+        // Это JavaScript - наш "инженер"
+        
+        // Функция, которая вызывается при нажатии на кнопку
+        function analyzeText() {
+            // 1. Находим текстовое поле и забираем из него текст
+            const text = document.getElementById('adText').value;
+            const resultsDiv = document.getElementById('results');
+            
+            // 2. Проверяем, ввел ли пользователь что-нибудь
+            if (!text.trim()) {
+                resultsDiv.innerHTML = '<div class="result-item warning">Пожалуйста, введите текст для анализа.</div>';
+                return;
+            }
+
+            // 3. Показываем сообщение о загрузке
+            resultsDiv.innerHTML = '<p>Идет анализ с помощью AI... Это может занять несколько секунд.</p>';
+
+            // 4. Это адрес нашего "мозга" (Backend)
+            const apiUrl = '/api/check'; 
+
+            // 5. Отправляем данные на сервер
+            fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    // Если сервер ответил ошибкой (например, 500), мы ее ловим
+                    throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 6. Когда "мозг" прислал ответ, мы его красиво показываем
+                resultsDiv.innerHTML = ''; // Очищаем надпись "Анализ..."
+                
+                // Если "мозг" вернул свою ошибку (например, неверный API ключ)
+                if (data.error) {
+                     const resultElement = document.createElement('div');
+                     resultElement.className = 'result-item critical';
+                     resultElement.textContent = 'Произошла ошибка: ' + data.error;
+                     resultsDiv.appendChild(resultElement);
+                } else {
+                    // Если все успешно, создаем блок <pre> для красивого отображения текста от ИИ
+                    const resultElement = document.createElement('pre');
+                    resultElement.className = 'result-item success'; // Используем класс success для зеленой рамки и фона
+                    resultElement.textContent = data.results; // Вставляем текст ответа от Gemini
+                    resultsDiv.appendChild(resultElement);
+                }
+            })
+            .catch(error => {
+                // 7. Если что-то пошло не так (например, нет связи с сервером)
+                console.error('Ошибка при отправке запроса:', error);
+                resultsDiv.innerHTML = '<div class="result-item critical">Не удалось выполнить проверку. Возможно, проблема с сетью или сервером.</div>';
+            });
+        }
+    </script>
+
+</body>
+</html>
